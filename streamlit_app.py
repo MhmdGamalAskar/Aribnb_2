@@ -29,7 +29,7 @@ import pandas as pd
 @st.cache_data  # Cache to avoid reloading every time
 def load_data():
     return pd.read_csv(
-        "Listings.csv",
+        "/Users/mhmdgamal/Downloads/Airbnb Data/Listings.csv",
         encoding="ISO-8859-1",
         low_memory=False
     )
@@ -388,12 +388,14 @@ menu_items = [
     ("📊 Data Overview", "📊 نظرة عامة"),
     ("🧹 Data Cleansing", "🧹 تنظيف البيانات"),
     ("📌 Key Business Questions", "📌 الأسئلة الرئيسية"),
-    ("📈 Visualizations", "📈 الرسوم البيانية")
+    ("📈 Visualizations", "📈 الرسوم البيانية"),
+     ("🔧 Preprocessing", "🔧 المعالجة المبدئية"),
+    ("🤖 Machine Learning", "🤖 التعلم الآلي"),
+   
 ]
 
 menu_labels = [item[0] if language == "English" else item[1] for item in menu_items]
 menu = st.sidebar.radio("", menu_labels, label_visibility="collapsed")
-
 
 
 
@@ -3561,3 +3563,225 @@ elif menu.startswith("📈"):
             * Combine flexible stay lengths with attractive pricing.
             * Maintain high reviews and standout experiences.
             """)
+
+elif menu.startswith("🔧"):
+    st.header("🔧 Data Preprocessing Pipeline")
+
+    with st.expander("📋 View Detailed Preprocessing Steps", expanded=False):
+        st.markdown("""
+        ### Data Preprocessing Steps
+        
+        #### 1️⃣ Label Encoding
+        **Objective:** Convert text data to numerical format
+        
+        - **First Column:** `host_is_superhost`
+            - Use LabelEncoder #1 (le1)
+            - Convert values to string then apply encoding
+        
+        - **Second Column:** `instant_bookable_cleaned`
+            - Use LabelEncoder #2 (le2)
+            - Convert values to string then apply encoding
+        
+        #### 2️⃣ MultiLabel Binarization for Amenities
+        - **Data Preparation:** Convert amenitiesCategory to list using json.loads
+        - **Processing:** Create amenitiesCategory_list column containing lists
+        - **Application:** Use MultiLabelBinarizer to convert lists to binary columns
+        - **Result:** Create new DataFrame with separate column for each amenity
+        - **Merging:** Combine results with original data
+        - **Cleanup:** Remove unnecessary original columns
+        
+        #### 3️⃣ Data Splitting
+        - **First Split:** Separate 20% for test set
+        - **Second Split:** From remaining, separate 12.5% for validation set
+        - **Final Distribution:**
+            - Training: 70%
+            - Validation: 12.5%
+            - Test: 17.5%
+        
+        #### 4️⃣ Target Encoding for Geographic Areas
+        
+        **A) Neighbourhood Processing:**
+        - **Data Filtering:** Keep neighbourhoods appearing more than 5 times
+        - **Average Calculation:** Calculate mean price for each neighbourhood from filtered data
+        - **Missing Value Handling:** Use overall price average for missing neighbourhoods
+        - **Application:** Apply to training, validation, and test sets
+        
+        **B) City & District Processing:**
+        - **Average Calculation:** Calculate mean price for each city and district from training data
+        - **Application:** Map values to all datasets
+        - **Missing Value Handling:** Automatically handled by pandas map function
+        
+        #### 5️⃣ One-Hot Encoding
+        - **Target Columns:** `room_type` and `property_category`
+        - **Processing:** Use pd.get_dummies with drop_first=True
+        - **Application:** Apply to training, validation, and test sets separately
+        - **Objective:** Avoid multicollinearity by dropping first category
+        
+        #### 6️⃣ Robust Scaling
+        **Target Columns:** 21 numerical columns
+        
+        - **Host Information:** total_listings_count, since_experience
+        - **Property Information:** accommodates, bedrooms, nights (min/max)
+        - **Location Information:** latitude, longitude, distance_to_center
+        - **Review Information:** counts, score, ratio, per_year
+        - **Feature Engineering:** bedrooms_per_person, density features, interaction features
+        - **Clustering:** location_cluster
+        
+        **Process:**
+        - **Fit:** Train scaler on training data only
+        - **Transform:** Apply transformation to training, validation, and test sets
+        - **Objective:** Avoid data leakage and preserve data distribution
+        
+        ---
+        
+        #### 📊 Summary Results:
+        - **Label Encoded:** 2 columns
+        - **MultiLabel Binarized:** Variable number of columns based on amenities
+        - **Target Encoded:** 3 geographic columns
+        - **One-Hot Encoded:** 2 categorical groups
+        - **Robust Scaled:** 21 numerical columns
+        - **Data Integrity:** Maintained throughout process, avoiding data leakage
+        """)
+# Add this section under the ML Models menu (elif menu.startswith("🤖"):)
+
+elif menu.startswith("🤖"):
+    st.title("🤖 Machine Learning Models")
+    
+    # Model Training and Optimization Steps
+    st.markdown("---")
+    st.header("🔧 Model Training & Optimization Pipeline")
+    
+    with st.expander("📋 View Detailed Training & Optimization Steps", expanded=False):
+        st.markdown("""
+        ### Model Training and Optimization Steps
+        
+        #### 1️⃣ Feature Selection using XGBoost
+        **Initial Model Training:**
+        - Use XGBRegressor with default parameters
+        - Extract Feature Importance from trained model
+        - Create DataFrame sorting features by importance
+        - Display top 20 most important features
+        - Visualize top 40 features in horizontal bar chart
+        
+        **Feature Filtering:**
+        - Apply threshold: select features with importance > 0.001
+        - Create reduced datasets with important features only
+        - Optimize data dimensionality for better performance
+        
+        #### 2️⃣ Log Transformation for Price Target
+        **Data Preparation:**
+        - Calculate shift value to ensure all prices ≥ 0
+        - Apply log1p transformation to y_train, y_test, y_val after shifting
+        - **Objective:** Handle skewed price distribution for better model performance
+        
+        #### 3️⃣ Enhanced XGBoost Training
+        **Optimized Parameters:**
+        ```python
+        n_estimators=1000
+        learning_rate=0.05
+        max_depth=10
+        subsample=0.8
+        colsample_bytree=0.8
+        reg_alpha=1, reg_lambda=1
+        ```
+        
+        **Training Process:**
+        - Train on reduced dataset with log-transformed target
+        - Evaluate using validation set
+        - Predict on test set
+        - **Inverse Transform:** Convert results back to original scale using expm1
+        - **Metrics:** Calculate RMSE & R² on original scale
+        
+        #### 4️⃣ CatBoost Training
+        **Optimized Parameters:**
+        ```python
+        iterations=1500
+        learning_rate=0.05
+        depth=10
+        loss_function='RMSE'
+        ```
+        
+        **Training Process:**
+        - Train on full dataset with early stopping
+        - Evaluate directly on original scale
+        - **Results:** RMSE & R² metrics
+        
+        #### 5️⃣ Multiple Model Comparison
+        **Models Used:** 9 different algorithms
+        - LinearRegression
+        - Ridge Regression
+        - Decision Tree
+        - Random Forest
+        - XGBoost
+        - LightGBM
+        - Gradient Boosting
+        - CatBoost
+        - K-Nearest Neighbors
+        
+        **Process:**
+        - Handle missing values by removing NaN entries
+        - Train and evaluate each model individually
+        - Collect results in DataFrame sorted by RMSE
+        - Display comprehensive performance table
+        
+        #### 6️⃣ Grid Search for Random Forest
+        **Parameter Grid:** 4 parameters with multiple values
+        - Generate all possible combinations
+        - Evaluate each combination on validation set
+        - Select best model with lowest RMSE
+        - **Final Testing:** Evaluate on test set
+        - **Display Results:** Best parameters and RMSE
+        
+        #### 7️⃣ Random Search for CatBoost
+        **Parameter Grid:** 8 parameters with multiple values
+        - **Random Sampling:** 20 random combinations
+        - **Iterative Evaluation:** Each combination with early stopping
+        - **Progress Tracking:** Using tqdm progress bar
+        - **Best Model Storage:** Save model and parameters with lowest RMSE
+        - **Final Results:** Best parameters and validation RMSE
+        
+        #### 8️⃣ Cross-Validation & Stacking
+        **Model Setup:**
+        - Base Models: Random Forest, XGBoost, CatBoost
+        - **K-Fold CV:** 5 folds with shuffle
+        
+        **Out-of-Fold Predictions:**
+        - Generate predictions for each model on each fold
+        - Evaluate each fold: R² & RMSE for each model
+        - **Meta-Features:** Combine predictions from all three models
+        
+        **Meta-Model:**
+        - Train Ridge regression on meta-features
+        - Final evaluation on training data
+        - **Test Prediction:** Combine predictions from all models
+        
+        #### 9️⃣ Final Model Saving
+        **Individual Model Training:**
+        - Train each model on complete dataset
+        - Generate test predictions from all three models
+        - **Final Prediction:** Using Meta-Model
+        - **Model Persistence:** Save Meta-Model to pkl file
+        
+        ---
+        
+        #### 📊 Final Results Summary:
+        
+        | **Step** | **Outcome** |
+        |----------|-------------|
+        | **Feature Selection** | Reduced variables to most important features |
+        | **Data Transformation** | Improved data distribution for better modeling |
+        | **Model Optimization** | Enhanced model parameters through tuning |
+        | **Ensemble Method** | Combined strength of different models |
+        | **Cross-Validation** | Reliable performance assessment |
+        | **Production Ready** | Final model ready for deployment |
+        
+        ### 🎯 Key Achievements:
+        - ✅ **Automated Feature Selection** - Intelligent feature reduction
+        - ✅ **Data Distribution Optimization** - Log transformation for skewed data
+        - ✅ **Hyperparameter Tuning** - Grid & Random search optimization
+        - ✅ **Ensemble Learning** - Stacking multiple models for better accuracy
+        - ✅ **Robust Validation** - Cross-validation for reliable estimates
+        - ✅ **Production Deployment** - Saved model ready for real-world use
+        """)
+    
+    # Continue with your existing ML models content below...
